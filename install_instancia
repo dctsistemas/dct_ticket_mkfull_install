@@ -54,7 +54,7 @@ system_git_clone
 backend_set_env
 backend_mysql_create
 backend_node_dependencies
-#backend_node_build
+backend_node_build
 backend_db_migrate
 backend_db_seed
 backend_start_pm2
