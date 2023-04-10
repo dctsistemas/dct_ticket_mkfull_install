@@ -16,7 +16,6 @@ frontend_node_dependencies() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/frontend
-  mv /home/deploy/${empresa_atualizar}/frontend/src/config.json.example /home/deploy/${empresa_atualizar}/frontend/src/config.json
   npm install --force
 EOF
 
@@ -37,7 +36,7 @@ frontend_node_build() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/frontend
-  mv /home/deploy/${empresa_atualizar}/frontend/src/config.json.example /home/deploy/${empresa_atualizar}/frontend/src/config.json
+  
   npm run build
 EOF
 
@@ -61,7 +60,7 @@ frontend_update() {
   pm2 stop ${empresa_atualizar}-frontend
   git pull
   cd /home/deploy/${empresa_atualizar}/frontend
-  mv /home/deploy/${empresa_atualizar}/frontend/src/config.json.example /home/deploy/${empresa_atualizar}/frontend/src/config.json
+  
   npm install
   rm -rf build
   npm run build
@@ -100,6 +99,7 @@ EOF
   sleep 2
 
 sudo su - deploy << EOF
+  mv /home/deploy/${instancia_add}/frontend/src/config.json.example /home/deploy/${instancia_add}/frontend/src/config.json
   cat <<[-]EOF > /home/deploy/${instancia_add}/frontend/server.js
 //simple express server to run frontend production build;
 const express = require("express");
