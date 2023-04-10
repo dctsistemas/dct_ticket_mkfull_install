@@ -318,6 +318,7 @@ system_docker_install() {
   add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
 
   apt install -y docker-ce
+  mv /home/deploy/${empresa_atualizar}/frontend/src/config.json.example /home/deploy/${empresa_atualizar}/frontend/src/config.json
 EOF
 
   sleep 2
