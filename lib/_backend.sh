@@ -17,7 +17,6 @@ backend_mysql_create() {
   sudo mysql -u root
   CREATE DATABASE ${instancia_add} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
   USE mysql;
-  UPDATE user SET plugin='mysql_native_password' WHERE User='root';
   FLUSH PRIVILEGES;
   exit;
   service mysql restart
@@ -58,8 +57,8 @@ PORT=${backend_port}
 
 DB_HOST=localhost
 DB_DIALECT=mysql
-DB_USER=${instancia_add}
-DB_PASS=${mysql_root_password}
+DB_USER=root
+DB_PASS=
 DB_NAME=${instancia_add}
 
 JWT_SECRET=${jwt_secret}
