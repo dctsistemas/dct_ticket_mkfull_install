@@ -58,6 +58,8 @@ frontend_update() {
   cd /home/deploy/${empresa_atualizar}
   pm2 stop ${empresa_atualizar}-frontend
   git pull
+  cd /home/deploy/${empresa_atualizar}/frontend/src
+  mv config.json.example config.json
   cd /home/deploy/${empresa_atualizar}/frontend
   npm install
   rm -rf build
