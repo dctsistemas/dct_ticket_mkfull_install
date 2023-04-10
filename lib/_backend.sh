@@ -1,26 +1,6 @@
 #!/bin/bash
 #
 # functions for setting up app backend
-#######################################
-# creates mysql db
-# Arguments:
-#   None
-#######################################
-backend_mysql_create() {
-  print_banner
-  printf "${WHITE} 💻 Criando banco de dados...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  sudo mysql -u root
-  CREATE DATABASE ${instancia_add} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-  exit;
-EOF
-
-  sleep 2
-}
 
 #######################################
 # sets environment variable for backend.

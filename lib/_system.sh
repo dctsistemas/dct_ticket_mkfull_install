@@ -409,6 +409,31 @@ EOF
   sleep 2
 }
 #######################################
+# creates mysql db
+# Arguments:
+#   None
+#######################################
+system_mysql_create() {
+  print_banner
+  printf "${WHITE} 💻 Criando banco de dados...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  sudo mysql -u root
+  CREATE DATABASE ${instancia_add} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+  USE mysql;
+  UPDATE user SET plugin='mysql_native_password' WHERE User='root';
+  FLUSH PRIVILEGES;
+
+  exit;
+EOF
+
+  sleep 2
+}
+
+#######################################
 # installs pm2
 # Arguments:
 #   None

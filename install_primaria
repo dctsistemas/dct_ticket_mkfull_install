@@ -40,7 +40,7 @@ inquiry_options
 system_update
 system_node_install
 system_mysql_install
-system_mysql_config
+system_mysql_create
 system_pm2_install
 system_docker_install
 system_puppeteer_dependencies
@@ -54,7 +54,6 @@ system_create_user
 # backend related
 system_git_clone
 backend_set_env
-backend_mysql_create
 backend_node_dependencies
 backend_node_build
 backend_db_migrate
