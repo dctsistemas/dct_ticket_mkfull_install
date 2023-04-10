@@ -52,9 +52,9 @@ inquiry_options
 # backend related
 system_git_clone
 backend_set_env
-backend_redis_create
+backend_mysql_create
 backend_node_dependencies
-backend_node_build
+#backend_node_build
 backend_db_migrate
 backend_db_seed
 backend_start_pm2
@@ -63,7 +63,7 @@ backend_nginx_setup
 # frontend related
 frontend_set_env
 frontend_node_dependencies
-frontend_node_build
+frontend_node_build --force
 frontend_start_pm2
 frontend_nginx_setup
 
