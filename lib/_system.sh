@@ -409,32 +409,6 @@ EOF
   sleep 2
 }
 #######################################
-# Configure Mysql
-# Arguments:
-#   None
-#######################################
-system_mysql_config() {
-  print_banner
-  printf "${WHITE} 💻 Configurando MYSQL...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  mysql
-  CREATE DATABASE ${instancia_add} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-  USE mysql;
-  UPDATE user SET plugin='mysql_native_password' WHERE User='root';
-  FLUSH PRIVILEGES;
-  exit;
-
-
-
-EOF
-
-  sleep 2
-}
-#######################################
 # installs pm2
 # Arguments:
 #   None
