@@ -16,6 +16,7 @@ frontend_node_dependencies() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/frontend
+  sudo  mv /home/deploy/${empresa_atualizar}/frontend/src/config.json.example /home/deploy/${empresa_atualizar}/frontend/src/config.json
   npm install --force
 EOF
 
@@ -36,6 +37,7 @@ frontend_node_build() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/frontend
+  sudo  mv /home/deploy/${empresa_atualizar}/frontend/src/config.json.example /home/deploy/${empresa_atualizar}/frontend/src/config.json
   npm run build
 EOF
 
@@ -58,9 +60,8 @@ frontend_update() {
   cd /home/deploy/${empresa_atualizar}
   pm2 stop ${empresa_atualizar}-frontend
   git pull
-  cd /home/deploy/${empresa_atualizar}/frontend/src
-  mv config.json.example config.json
   cd /home/deploy/${empresa_atualizar}/frontend
+  sudo  mv /home/deploy/${empresa_atualizar}/frontend/src/config.json.example /home/deploy/${empresa_atualizar}/frontend/src/config.json
   npm install
   rm -rf build
   npm run build
