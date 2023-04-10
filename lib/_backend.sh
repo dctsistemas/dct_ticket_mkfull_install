@@ -16,10 +16,7 @@ backend_mysql_create() {
   sudo su - root <<EOF
   sudo mysql -u root
   CREATE DATABASE ${instancia_add} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-  USE mysql;
-  FLUSH PRIVILEGES;
   exit;
-  service mysql restart
 EOF
 
   sleep 2
