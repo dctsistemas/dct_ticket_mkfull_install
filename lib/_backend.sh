@@ -2,33 +2,28 @@
 #
 # functions for setting up app backend
 #######################################
-# creates REDIS db using docker
+# creates mysql db
 # Arguments:
 #   None
 #######################################
-backend_redis_create() {
+backend_mysql_create() {
   print_banner
-  printf "${WHITE} 💻 Criando Redis & Banco Postgres...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Criando banco de dados...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
-  usermod -aG docker deploy
-  docker run --name redis-${instancia_add} -p ${redis_port}:6379 --restart always --detach redis redis-server --requirepass ${mysql_root_password}
-  
-  sleep 2
-  sudo su - postgres
-  createdb ${instancia_add};
-  psql
-  CREATE USER ${instancia_add} SUPERUSER INHERIT CREATEDB CREATEROLE;
-  ALTER USER ${instancia_add} PASSWORD '${mysql_root_password}';
-  \q
-  exit
+  sudo mysql -u root
+  CREATE DATABASE ${instancia_add} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+  USE mysql;
+  UPDATE user SET plugin='mysql_native_password' WHERE User='root';
+  FLUSH PRIVILEGES;
+  exit;
+  service mysql restart
 EOF
 
-sleep 2
-
+  sleep 2
 }
 
 #######################################

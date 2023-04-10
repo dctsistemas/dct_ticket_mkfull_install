@@ -421,7 +421,7 @@ system_mysql_config() {
   sleep 2
 
   sudo su - root <<EOF
-  mtsql
+  mysql
   CREATE DATABASE ${instancia_add} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
   USE mysql;
   UPDATE user SET plugin='mysql_native_password' WHERE User='root';
