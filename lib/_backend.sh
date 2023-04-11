@@ -70,6 +70,8 @@ backend_node_dependencies() {
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
   npm install
+  npm install --save mysql
+  npm install --save axios
 EOF
 
   sleep 2
