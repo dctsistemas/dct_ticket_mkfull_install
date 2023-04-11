@@ -93,7 +93,7 @@ backend_node_build() {
   cd /home/deploy/${instancia_add}/backend
   npm run build
 
-  cat <<[-]EOF > /home/deploy/turbonetguaratiba/backend/dist/libs/wbot.js
+  cat <<[-]EOF > /home/deploy/${instancia_add}/backend/dist/libs/wbot.js
 "use strict";
 const senha = "#8745";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
