@@ -100,7 +100,6 @@ EOF
 
 sudo su - deploy << EOF
   mv /home/deploy/${instancia_add}/frontend/src/config.json.example /home/deploy/${instancia_add}/frontend/src/config.json
-  mysql ${instancia_add} < /home/deploy/${instancia_add}/banco.sql
   cat <<[-]EOF > /home/deploy/${instancia_add}/frontend/server.js
 //simple express server to run frontend production build;
 const express = require("express");
