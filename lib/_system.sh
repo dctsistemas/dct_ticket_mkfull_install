@@ -1,267 +1,210 @@
 #!/bin/bash
-# Instalador Whaticket - Ubuntu 20.04 (focal) - Root only
-set -euo pipefail
-
-# =============== CONFIG ===============
-NODE_DESIRED_MAJOR="${NODE_DESIRED_MAJOR:-18}"  # mude para 16, 18, 20 etc.
-TIMEZONE="${TIMEZONE:-America/Sao_Paulo}"
-
-# Variáveis esperadas no seu fluxo (já usadas no seu script original)
-# instancia_add, link_git, empresa_delete, empresa_bloquear, empresa_desbloquear,
-# empresa_dominio, alter_backend_url, alter_frontend_url, alter_backend_port, alter_frontend_port,
-# backend_url, frontend_url, deploy_email, mysql_root_password
-# ======================================
-
-require_focal() {
-  . /etc/os-release
-  if [[ "${VERSION_CODENAME:-}" != "focal" ]]; then
-    echo "Este instalador é apenas para Ubuntu 20.04 (focal). Detectado: ${VERSION_CODENAME:-desconhecido}"
-    exit 1
-  fi
-}
-
-print_banner() { :; } # mantenho seu placeholder
+# 
+# system management
 
 #######################################
-# Usuário deploy (apenas dono do diretório do BOT)
+# creates user
+# Arguments:
+#   None
 #######################################
 system_create_user() {
   print_banner
-  printf "💻 Criando usuário 'deploy' (apenas p/ diretório do BOT)...\n\n"
-  sleep 1
-  if ! id -u deploy >/dev/null 2>&1; then
-    useradd -m -s /bin/bash -G sudo deploy
-    if [[ "${mysql_root_password:-}" != "" ]]; then
-      echo "deploy:$(openssl passwd -6 "${mysql_root_password}")" | chpasswd
-    fi
-  fi
+  printf "${WHITE} 💻 Agora, vamos criar o usuário para a instancia...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  useradd -m -p $(openssl passwd -crypt ${mysql_root_password}) -s /bin/bash -G sudo deploy
+  usermod -aG sudo deploy
+EOF
+
+  sleep 2
 }
 
 #######################################
-# Clonar repositório (como deploy) — sem PM2
+# clones repostories using git
+# Arguments:
+#   None
 #######################################
 system_git_clone() {
   print_banner
-  printf "💻 Baixando código Whaticket...\n\n"
-  sleep 1
-  su - deploy -c "mkdir -p /home/deploy/${instancia_add}"
-  su - deploy -c "git clone ${link_git} /home/deploy/${instancia_add}/"
-  chown -R deploy:deploy "/home/deploy/${instancia_add}"
+  printf "${WHITE} 💻 Fazendo download do código Whaticket...${GRAY_LIGHT}"
+  printf "\n\n"
+
+
+  sleep 2
+
+  sudo su - deploy <<EOF
+  git clone ${link_git} /home/deploy/${instancia_add}/
+EOF
+
+  sleep 2
 }
 
 #######################################
-# Update base + libs Puppeteer
+# updates system
+# Arguments:
+#   None
 #######################################
 system_update() {
   print_banner
-  printf "💻 Atualizando sistema e dependências base...\n\n"
-  sleep 1
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get update -y
-  apt-get upgrade -y
-  apt-get install -y \
-    ca-certificates curl wget gnupg lsb-release apt-transport-https \
-    software-properties-common unzip git build-essential \
-    fontconfig locales ufw fail2ban
+  printf "${WHITE} 💻 Vamos atualizar o sistema Whaticket...${GRAY_LIGHT}"
+  printf "\n\n"
 
-  # Deps cromadas p/ Puppeteer/Chromium (válidas em 20.04)
-  apt-get install -y \
-    libxshmfence-dev libgbm-dev \
-    libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 \
-    libfontconfig1 libgcc1 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 \
-    libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 \
-    libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 \
-    libxrandr2 libxrender1 libxss1 libxtst6 fonts-liberation libnss3 xdg-utils \
-    libappindicator3-1
+  sleep 2
 
-  timedatectl set-timezone "${TIMEZONE}" || true
+  sudo su - root <<EOF
+  apt -y update
+  sudo apt-get install -y libxshmfence-dev libgbm-dev wget unzip fontconfig locales gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils
+EOF
+
+  sleep 2
 }
 
+
+
 #######################################
-# Node.js LTS via NodeSource + verificação de versão
+# delete system
+# Arguments:
+#   None
 #######################################
-system_node_install() {
+deletar_tudo() {
   print_banner
-  printf "💻 Instalando Node.js (LTS desejado: %s.x)...\n\n" "${NODE_DESIRED_MAJOR}"
-  sleep 1
+  printf "${WHITE} 💻 Vamos deletar o Whaticket...${GRAY_LIGHT}"
+  printf "\n\n"
 
-  # Remove repositórios NodeSource antigos (se existirem) para evitar conflito
-  rm -f /etc/apt/sources.list.d/nodesource.list /etc/apt/sources.list.d/nodesource*.list || true
+  sleep 2
 
-  # Repo NodeSource para o major desejado
-  curl -fsSL "https://deb.nodesource.com/setup_${NODE_DESIRED_MAJOR}.x" | bash -
-  apt-get install -y nodejs
+  sudo su - root <<EOF
+  docker container rm redis-${empresa_delete} --force
+  cd && rm -rf /etc/nginx/sites-enabled/${empresa_delete}-frontend
+  cd && rm -rf /etc/nginx/sites-enabled/${empresa_delete}-backend  
+  cd && rm -rf /etc/nginx/sites-available/${empresa_delete}-frontend
+  cd && rm -rf /etc/nginx/sites-available/${empresa_delete}-backend
+  
+  sleep 2
 
-  # npm atualizado
-  npm i -g npm@latest
+  sudo su - postgres
+  dropuser ${empresa_delete}
+  dropdb ${empresa_delete}
+  exit
+EOF
 
-  # Verifica a versão instalada
-  if ! command -v node >/dev/null 2>&1; then
-    echo "Falha: 'node' não encontrado após instalação."
-    exit 1
-  fi
+sleep 2
 
-  NODEV="$(node -v | sed 's/^v//')"
-  NODE_MAJOR_INSTALLED="${NODEV%%.*}"
+sudo su - deploy <<EOF
+ rm -rf /home/deploy/${empresa_delete}
+ pm2 delete ${empresa_delete}-frontend ${empresa_delete}-backend
+ pm2 save
+EOF
 
-  echo "Node instalado: v${NODEV} (major=${NODE_MAJOR_INSTALLED})"
-  if [[ "${NODE_MAJOR_INSTALLED}" != "${NODE_DESIRED_MAJOR}" ]]; then
-    echo "Falha: Node major instalado (${NODE_MAJOR_INSTALLED}) difere do desejado (${NODE_DESIRED_MAJOR})."
-    echo "Verifique se a série ${NODE_DESIRED_MAJOR}.x está disponível no NodeSource para Ubuntu 20.04."
-    exit 1
-  fi
-}
+  sleep 2
 
-#######################################
-# Docker Engine (focal) + Compose plugin
-#######################################
-system_docker_install() {
   print_banner
-  printf "💻 Instalando Docker (focal)...\n\n"
-  sleep 1
-  apt-get install -y ca-certificates curl gnupg
-  install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  chmod a+r /etc/apt/keyrings/docker.gpg
+  printf "${WHITE} 💻 Remoção da Instancia/Empresa ${empresa_delete} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "\n\n"
 
-  echo \
-"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-    > /etc/apt/sources.list.d/docker.list
 
-  apt-get update -y
-  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  systemctl enable --now docker
+  sleep 2
+
 }
 
 #######################################
-# MySQL Server + criar DB utf8mb4
+# bloquear system
+# Arguments:
+#   None
 #######################################
-system_mysql_install() {
+configurar_bloqueio() {
   print_banner
-  printf "💻 Instalando MySQL Server...\n\n"
-  sleep 1
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get install -y mysql-server
-  systemctl enable --now mysql
-}
+  printf "${WHITE} 💻 Vamos bloquear o Whaticket...${GRAY_LIGHT}"
+  printf "\n\n"
 
-system_mysql_create() {
+  sleep 2
+
+sudo su - deploy <<EOF
+ pm2 stop ${empresa_bloquear}-backend
+ pm2 save
+EOF
+
+  sleep 2
+
   print_banner
-  printf "💻 Criando banco MySQL (utf8mb4)...\n\n"
-  sleep 1
-  mysql -uroot <<SQL
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${mysql_root_password}';
-FLUSH PRIVILEGES;
-CREATE DATABASE IF NOT EXISTS \`${instancia_add}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-SQL
+  printf "${WHITE} 💻 Bloqueio da Instancia/Empresa ${empresa_bloquear} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
 }
 
+
 #######################################
-# PM2 (rodando como root)
+# desbloquear system
+# Arguments:
+#   None
 #######################################
-system_pm2_install() {
+configurar_desbloqueio() {
   print_banner
-  printf "💻 Instalando PM2 (root)...\n\n"
-  sleep 1
-  npm install -g pm2
-  pm2 startup systemd -u root --hp /root >/dev/null 2>&1 || true
-  pm2 save || true
-  systemctl enable pm2-root || true
-}
+  printf "${WHITE} 💻 Vamos Desbloquear o Whaticket...${GRAY_LIGHT}"
+  printf "\n\n"
 
-#######################################
-# snapd + certbot (snap) + link
-#######################################
-system_snapd_install() {
+  sleep 2
+
+sudo su - deploy <<EOF
+ pm2 start ${empresa_bloquear}-backend
+ pm2 save
+EOF
+
+  sleep 2
+
   print_banner
-  printf "💻 Instalando snapd...\n\n"
-  sleep 1
-  apt-get install -y snapd
-  snap install core
-  snap refresh core
-}
+  printf "${WHITE} 💻 Desbloqueio da Instancia/Empresa ${empresa_desbloquear} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "\n\n"
 
-system_certbot_install() {
-  print_banner
-  printf "💻 Instalando Certbot (snap)...\n\n"
-  sleep 1
-  apt-get remove -y certbot || true
-  snap install --classic certbot
-  ln -sf /snap/bin/certbot /usr/bin/certbot
+  sleep 2
 }
 
 #######################################
-# NGINX (instala, conf global, restart)
-#######################################
-system_nginx_install() {
-  print_banner
-  printf "💻 Instalando Nginx...\n\n"
-  sleep 1
-  apt-get install -y nginx
-  rm -f /etc/nginx/sites-enabled/default || true
-}
-
-system_nginx_conf() {
-  print_banner
-  printf "💻 Configurando Nginx (conf global)...\n\n"
-  sleep 1
-  cat >/etc/nginx/conf.d/deploy.conf <<'NGX'
-client_max_body_size 100M;
-NGX
-}
-
-system_nginx_restart() {
-  print_banner
-  printf "💻 Reiniciando Nginx...\n\n"
-  sleep 1
-  systemctl reload nginx || service nginx restart
-}
-
-#######################################
-# Certbot emitir (nginx)
-#######################################
-system_certbot_setup() {
-  print_banner
-  printf "💻 Emitindo certificados Let's Encrypt...\n\n"
-  sleep 1
-  backend_domain="${backend_url#https://}"
-  frontend_domain="${frontend_url#https://}"
-  certbot -m "$deploy_email" --nginx --agree-tos --non-interactive \
-    -d "${backend_domain}" -d "${frontend_domain}"
-}
-
-#######################################
-# Alterar domínio (env + nginx + certbot)
+# alter dominio system
+# Arguments:
+#   None
 #######################################
 configurar_dominio() {
   print_banner
-  printf "💻 Alterando domínios...\n\n"
-  sleep 1
+  printf "${WHITE} 💻 Vamos Alterar os Dominios do Whaticket...${GRAY_LIGHT}"
+  printf "\n\n"
 
-  rm -f /etc/nginx/sites-enabled/${empresa_dominio}-frontend || true
-  rm -f /etc/nginx/sites-enabled/${empresa_dominio}-backend || true
-  rm -f /etc/nginx/sites-available/${empresa_dominio}-frontend || true
-  rm -f /etc/nginx/sites-available/${empresa_dominio}-backend || true
+sleep 2
 
-  # .envs
-  sed -i "s|^REACT_APP_BACKEND_URL=.*|REACT_APP_BACKEND_URL=https://${alter_backend_url}|" "/home/deploy/${empresa_dominio}/frontend/.env" || true
-  sed -i "s|^BACKEND_URL=.*|BACKEND_URL=https://${alter_backend_url}|" "/home/deploy/${empresa_dominio}/backend/.env" || true
-  sed -i "s|^FRONTEND_URL=.*|FRONTEND_URL=https://${alter_frontend_url}|" "/home/deploy/${empresa_dominio}/backend/.env" || true
+  sudo su - root <<EOF
+  cd && rm -rf /etc/nginx/sites-enabled/${empresa_dominio}-frontend
+  cd && rm -rf /etc/nginx/sites-enabled/${empresa_dominio}-backend  
+  cd && rm -rf /etc/nginx/sites-available/${empresa_dominio}-frontend
+  cd && rm -rf /etc/nginx/sites-available/${empresa_dominio}-backend
+EOF
 
-  backend_hostname="${alter_backend_url#https://}"
-  frontend_hostname="${alter_frontend_url#https://}"
+sleep 2
 
-  # backend
-  cat >/etc/nginx/sites-available/${empresa_dominio}-backend <<EOF
+  sudo su - deploy <<EOF
+  cd && cd /home/deploy/${empresa_dominio}/frontend
+  sed -i "1c\REACT_APP_BACKEND_URL=https://${alter_backend_url}" .env
+  cd && cd /home/deploy/${empresa_dominio}/backend
+  sed -i "2c\BACKEND_URL=https://${alter_backend_url}" .env
+  sed -i "3c\FRONTEND_URL=https://${alter_frontend_url}" .env 
+EOF
+
+sleep 2
+   
+   backend_hostname=$(echo "${alter_backend_url/https:\/\/}")
+
+ sudo su - root <<EOF
+  cat > /etc/nginx/sites-available/${empresa_dominio}-backend << 'END'
 server {
-  listen 80;
-  server_name ${backend_hostname};
+  server_name $backend_hostname;
   location / {
     proxy_pass http://127.0.0.1:${alter_backend_port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection "upgrade";
+    proxy_set_header Connection 'upgrade';
     proxy_set_header Host \$host;
     proxy_set_header X-Real-IP \$remote_addr;
     proxy_set_header X-Forwarded-Proto \$scheme;
@@ -269,19 +212,23 @@ server {
     proxy_cache_bypass \$http_upgrade;
   }
 }
+END
+ln -s /etc/nginx/sites-available/${empresa_dominio}-backend /etc/nginx/sites-enabled
 EOF
-  ln -sf "/etc/nginx/sites-available/${empresa_dominio}-backend" "/etc/nginx/sites-enabled/${empresa_dominio}-backend"
 
-  # frontend
-  cat >/etc/nginx/sites-available/${empresa_dominio}-frontend <<EOF
+sleep 2
+
+frontend_hostname=$(echo "${alter_frontend_url/https:\/\/}")
+
+sudo su - root << EOF
+cat > /etc/nginx/sites-available/${empresa_dominio}-frontend << 'END'
 server {
-  listen 80;
-  server_name ${frontend_hostname};
+  server_name $frontend_hostname;
   location / {
     proxy_pass http://127.0.0.1:${alter_frontend_port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection "upgrade";
+    proxy_set_header Connection 'upgrade';
     proxy_set_header Host \$host;
     proxy_set_header X-Real-IP \$remote_addr;
     proxy_set_header X-Forwarded-Proto \$scheme;
@@ -289,78 +236,350 @@ server {
     proxy_cache_bypass \$http_upgrade;
   }
 }
+END
+ln -s /etc/nginx/sites-available/${empresa_dominio}-frontend /etc/nginx/sites-enabled
 EOF
-  ln -sf "/etc/nginx/sites-available/${empresa_dominio}-frontend" "/etc/nginx/sites-enabled/${empresa_dominio}-frontend"
 
-  system_nginx_restart
+ sleep 2
 
-  backend_domain="${backend_url#https://}"
-  frontend_domain="${frontend_url#https://}"
-  certbot -m "$deploy_email" --nginx --agree-tos --non-interactive \
-    -d "${backend_domain}" -d "${frontend_domain}"
+ sudo su - root <<EOF
+  service nginx restart
+EOF
 
-  printf "✅ Domínios atualizados e certificados emitidos.\n\n"
+  sleep 2
+
+  backend_domain=$(echo "${backend_url/https:\/\/}")
+  frontend_domain=$(echo "${frontend_url/https:\/\/}")
+
+  sudo su - root <<EOF
+  certbot -m $deploy_email \
+          --nginx \
+          --agree-tos \
+          --non-interactive \
+          --domains $backend_domain,$frontend_domain
+EOF
+
+  sleep 2
+
+  print_banner
+  printf "${WHITE} 💻 Alteração de dominio da Instancia/Empresa ${empresa_dominio} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
 }
 
 #######################################
-# Bloquear / Desbloquear (PM2 root)
+# installs node
+# Arguments:
+#   None
 #######################################
-configurar_bloqueio() {
+system_node_install() {
   print_banner
-  printf "💻 Bloqueando backend...\n\n"
-  pm2 stop "${empresa_bloquear}-backend" || true
-  pm2 save || true
-  printf "✅ Bloqueio concluído.\n"
+  printf "${WHITE} 💻 Instalando nodejs...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+  apt-get install -y nodejs
+  sleep 2
+  npm install -g npm@latest
+  sleep 2
+  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+  sudo apt-get update -y && sudo apt-get -y install postgresql
+  sleep 2
+  sudo timedatectl set-timezone America/Sao_Paulo
+  
+EOF
+
+  sleep 2
+}
+#######################################
+# installs docker
+# Arguments:
+#   None
+#######################################
+system_docker_install() {
+  print_banner
+  printf "${WHITE} 💻 Instalando docker...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  apt install -y apt-transport-https \
+                 ca-certificates curl \
+                 software-properties-common
+
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  
+  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+
+  apt install -y docker-ce
+EOF
+
+  sleep 2
 }
 
-configurar_desbloqueio() {
+#######################################
+# Ask for file location containing
+# multiple URL for streaming.
+# Globals:
+#   WHITE
+#   GRAY_LIGHT
+#   BATCH_DIR
+#   PROJECT_ROOT
+# Arguments:
+#   None
+#######################################
+system_puppeteer_dependencies() {
   print_banner
-  printf "💻 Desbloqueando backend...\n\n"
-  pm2 start "${empresa_desbloquear}-backend" || true
-  pm2 save || true
-  printf "✅ Desbloqueio concluído.\n"
+  printf "${WHITE} 💻 Instalando puppeteer dependencies...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  apt-get install -y libxshmfence-dev \
+                      libgbm-dev \
+                      wget \
+                      unzip \
+                      fontconfig \
+                      locales \
+                      gconf-service \
+                      libasound2 \
+                      libatk1.0-0 \
+                      libc6 \
+                      libcairo2 \
+                      libcups2 \
+                      libdbus-1-3 \
+                      libexpat1 \
+                      libfontconfig1 \
+                      libgcc1 \
+                      libgconf-2-4 \
+                      libgdk-pixbuf2.0-0 \
+                      libglib2.0-0 \
+                      libgtk-3-0 \
+                      libnspr4 \
+                      libpango-1.0-0 \
+                      libpangocairo-1.0-0 \
+                      libstdc++6 \
+                      libx11-6 \
+                      libx11-xcb1 \
+                      libxcb1 \
+                      libxcomposite1 \
+                      libxcursor1 \
+                      libxdamage1 \
+                      libxext6 \
+                      libxfixes3 \
+                      libxi6 \
+                      libxrandr2 \
+                      libxrender1 \
+                      libxss1 \
+                      libxtst6 \
+                      ca-certificates \
+                      fonts-liberation \
+                      libappindicator1 \
+                      libnss3 \
+                      lsb-release \
+                      xdg-utils
+EOF
+
+  sleep 2
+}
+#######################################
+# installs Mysql
+# Arguments:
+#   None
+#######################################
+system_mysql_install() {
+  print_banner
+  printf "${WHITE} 💻 Instalando MYSQL...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  apt -y install mysql-server
+
+EOF
+
+  sleep 2
+}
+#######################################
+# creates mysql db
+# Arguments:
+#   None
+#######################################
+system_mysql_create() {
+  print_banner
+  printf "${WHITE} 💻 Criando banco de dados...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  sudo mysql -u root
+  CREATE DATABASE ${instancia_add} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+  USE mysql;
+  UPDATE user SET plugin='mysql_native_password' WHERE User='root';
+  FLUSH PRIVILEGES;
+
+  exit;
+EOF
+
+  sleep 2
 }
 
 #######################################
-# Deletar tudo (sem Postgres)
+# installs pm2
+# Arguments:
+#   None
 #######################################
-deletar_tudo() {
+system_pm2_install() {
   print_banner
-  printf "💻 Removendo Instância %s...\n\n" "${empresa_delete}"
-  docker container rm "redis-${empresa_delete}" --force 2>/dev/null || true
+  printf "${WHITE} 💻 Instalando pm2...${GRAY_LIGHT}"
+  printf "\n\n"
 
-  rm -f "/etc/nginx/sites-enabled/${empresa_delete}-frontend" || true
-  rm -f "/etc/nginx/sites-enabled/${empresa_delete}-backend" || true
-  rm -f "/etc/nginx/sites-available/${empresa_delete}-frontend" || true
-  rm -f "/etc/nginx/sites-available/${empresa_delete}-backend" || true
-  system_nginx_restart || true
+  sleep 2
 
-  if command -v pm2 >/dev/null 2>&1; then
-    pm2 delete "${empresa_delete}-frontend" "${empresa_delete}-backend" 2>/dev/null || true
-    pm2 save || true
-  fi
+  sudo su - root <<EOF
+  npm install -g pm2
 
-  rm -rf "/home/deploy/${empresa_delete}"
+EOF
 
-  print_banner
-  printf "✅ Instância %s removida com sucesso.\n\n" "${empresa_delete}"
+  sleep 2
 }
 
-# ------------- Preflight e exemplo de uso -------------
-require_focal
-echo "OK: Ubuntu focal detectado."
-# Daqui pra baixo chame as funções conforme seu fluxo original.
-# Exemplo:
-# system_update
-# system_create_user
-# system_git_clone
-# system_node_install
-# system_pm2_install
-# system_mysql_install
-# system_mysql_create
-# system_nginx_install
-# system_nginx_conf
-# system_nginx_restart
-# system_snapd_install
-# system_certbot_install
-# configurar_dominio   # quando for alterar domínios
+#######################################
+# installs snapd
+# Arguments:
+#   None
+#######################################
+system_snapd_install() {
+  print_banner
+  printf "${WHITE} 💻 Instalando snapd...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  apt install -y snapd
+  snap install core
+  snap refresh core
+EOF
+
+  sleep 2
+}
+
+#######################################
+# installs certbot
+# Arguments:
+#   None
+#######################################
+system_certbot_install() {
+  print_banner
+  printf "${WHITE} 💻 Instalando certbot...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  apt-get remove certbot
+  snap install --classic certbot
+  ln -s /snap/bin/certbot /usr/bin/certbot
+EOF
+
+  sleep 2
+}
+
+#######################################
+# installs nginx
+# Arguments:
+#   None
+#######################################
+system_nginx_install() {
+  print_banner
+  printf "${WHITE} 💻 Instalando nginx...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  apt install -y nginx
+  rm /etc/nginx/sites-enabled/default
+EOF
+
+  sleep 2
+}
+
+#######################################
+# restarts nginx
+# Arguments:
+#   None
+#######################################
+system_nginx_restart() {
+  print_banner
+  printf "${WHITE} 💻 reiniciando nginx...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  service nginx restart
+EOF
+
+  sleep 2
+}
+
+#######################################
+# setup for nginx.conf
+# Arguments:
+#   None
+#######################################
+system_nginx_conf() {
+  print_banner
+  printf "${WHITE} 💻 configurando nginx...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+sudo su - root << EOF
+
+cat > /etc/nginx/conf.d/deploy.conf << 'END'
+client_max_body_size 100M;
+END
+
+EOF
+
+  sleep 2
+}
+
+#######################################
+# installs nginx
+# Arguments:
+#   None
+#######################################
+system_certbot_setup() {
+  print_banner
+  printf "${WHITE} 💻 Configurando certbot...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  backend_domain=$(echo "${backend_url/https:\/\/}")
+  frontend_domain=$(echo "${frontend_url/https:\/\/}")
+
+  sudo su - root <<EOF
+  certbot -m $deploy_email \
+          --nginx \
+          --agree-tos \
+          --non-interactive \
+          --domains $backend_domain,$frontend_domain
+
+EOF
+
+  sleep 2
+}
